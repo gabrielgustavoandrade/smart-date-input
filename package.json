@@ -1,6 +1,6 @@
 {
   "name": "@gabrielgustavoandrade/smart-date-input",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "An intelligent date/time input component with natural language parsing, smart suggestions, and confidence scoring",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
