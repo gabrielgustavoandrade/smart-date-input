@@ -71,9 +71,22 @@ The component understands various natural language inputs:
 | `value` | `number \| null` | `null` | Timestamp value |
 | `onChange` | `(value: number \| null) => void` | - | Change handler |
 | `showTime` | `boolean` | `false` | Enable time input |
+| `hourFormat` | `"12" \| "24"` | `"24"` | Time display format. `"12"` renders `h:mm AM/PM` and shows hour/minute/AM-PM selects in the popover. `"24"` keeps the existing `HH:mm` input |
 | `placeholder` | `string` | `"Enter date..."` | Input placeholder |
 | `className` | `string` | `""` | Additional CSS classes |
 | `disabled` | `boolean` | `false` | Disable input |
+
+#### 12-hour format example
+
+```tsx
+<SmartDateInput
+  value={date}
+  onChange={setDate}
+  showTime
+  hourFormat="12"
+  placeholder="Pick a date and time"
+/>
+```
 
 ### Utility Functions
 

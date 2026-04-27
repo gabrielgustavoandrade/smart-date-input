@@ -58,8 +58,8 @@ export const parseSmartDateString = (input: string): DateParseResult | null => {
 	for (const pattern of timePatterns) {
 		timeMatch = trimmed.match(pattern);
 		if (timeMatch) {
-			let hours = parseInt(timeMatch[1], 10);
-			const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+			let hours = Number.parseInt(timeMatch[1], 10);
+			const minutes = timeMatch[2] ? Number.parseInt(timeMatch[2], 10) : 0;
 			const ampm = timeMatch[3]?.toLowerCase();
 
 			if (ampm === "pm" && hours !== 12) {
@@ -102,13 +102,13 @@ export const parseSmartDateString = (input: string): DateParseResult | null => {
 		{
 			pattern: /^in (\d+) days?$/i,
 			handler: (match: RegExpMatchArray) =>
-				addDays(now, parseInt(match[1], 10)),
+				addDays(now, Number.parseInt(match[1], 10)),
 			confidence: 0.85,
 		},
 		{
 			pattern: /^(\d+) days? ago$/i,
 			handler: (match: RegExpMatchArray) =>
-				addDays(now, -parseInt(match[1], 10)),
+				addDays(now, -Number.parseInt(match[1], 10)),
 			confidence: 0.85,
 		},
 		{
@@ -230,10 +230,10 @@ export const parseSmartDateString = (input: string): DateParseResult | null => {
 							monthStr.startsWith(name.substring(0, 3)),
 						);
 						month = Math.floor(monthIndex / 2); // Each month has 2 entries (short + long)
-						day = parseInt(match[2], 10);
-					} else if (match[2] && Number.isNaN(parseInt(match[2], 10))) {
+						day = Number.parseInt(match[2], 10);
+					} else if (match[2] && Number.isNaN(Number.parseInt(match[2], 10))) {
 						// Day first, then month name
-						day = parseInt(match[1], 10);
+						day = Number.parseInt(match[1], 10);
 						const monthStr = match[2].toLowerCase();
 						const monthNames = [
 							"jan",
@@ -266,8 +266,8 @@ export const parseSmartDateString = (input: string): DateParseResult | null => {
 						month = Math.floor(monthIndex / 2);
 					} else {
 						// Numeric format MM/DD or DD/MM
-						month = parseInt(match[1], 10) - 1; // 0-based
-						day = parseInt(match[2], 10);
+						month = Number.parseInt(match[1], 10) - 1; // 0-based
+						day = Number.parseInt(match[2], 10);
 					}
 
 					if (month >= 0 && month <= 11 && day >= 1 && day <= 31) {
@@ -334,12 +334,21 @@ export const parseDateString = (dateString: string): Date | null => {
 	return result ? result.date : null;
 };
 
-export const formatDateForInput = (date: Date, includeTime = false): string => {
+export type HourFormat = "12" | "24";
+
+export const formatDateForInput = (
+	date: Date,
+	includeTime = false,
+	hourFormat: HourFormat = "24",
+): string => {
 	if (!isValid(date)) {
 		return "";
 	}
 
 	if (includeTime) {
+		if (hourFormat === "12") {
+			return format(date, "yyyy-MM-dd h:mm a");
+		}
 		return format(date, "yyyy-MM-dd HH:mm");
 	}
 
@@ -350,10 +359,13 @@ export const formatDateForInput = (date: Date, includeTime = false): string => {
 export const generateSmartSuggestions = (
 	input: string,
 	showTime = false,
+	hourFormat: HourFormat = "24",
 ): SmartSuggestion[] => {
 	const suggestions: SmartSuggestion[] = [];
 	const trimmed = input.trim().toLowerCase();
 	const now = new Date();
+	const timeFormat =
+		hourFormat === "12" ? "MMM dd 'at' h:mma" : "MMM dd 'at' HH:mm";
 
 	// If input is empty, show fewer, more relevant suggestions
 	if (!trimmed) {
@@ -404,7 +416,7 @@ export const generateSmartSuggestions = (
 					preview: parseResult
 						? formatDateForDisplay(
 								parseResult.date,
-								showTime ? "MMM dd 'at' h:mma" : "MMM dd, yyyy",
+								showTime ? timeFormat : "MMM dd, yyyy",
 							)
 						: s.label,
 					parsedDate: parseResult?.date,
@@ -419,12 +431,12 @@ export const generateSmartSuggestions = (
 		// Boost confidence for direct input matches to prioritize them
 		const boostedConfidence = Math.min(currentParse.confidence + 0.2, 1.0);
 		suggestions.push({
-			label: `"${input}" → ${formatDateForDisplay(currentParse.date, showTime ? "MMM dd 'at' h:mma" : "MMM dd, yyyy")}`,
+			label: `"${input}" → ${formatDateForDisplay(currentParse.date, showTime ? timeFormat : "MMM dd, yyyy")}`,
 			value: input,
 			confidence: boostedConfidence,
 			preview: formatDateForDisplay(
 				currentParse.date,
-				showTime ? "MMM dd 'at' h:mma" : "MMM dd, yyyy",
+				showTime ? timeFormat : "MMM dd, yyyy",
 			),
 			parsedDate: currentParse.date,
 			category: "natural",
@@ -462,10 +474,7 @@ export const generateSmartSuggestions = (
 							value: suggestion,
 							confidence: 0.85,
 							category: "time",
-							preview: formatDateForDisplay(
-								parseResult.date,
-								"MMM dd 'at' h:mma",
-							),
+							preview: formatDateForDisplay(parseResult.date, timeFormat),
 							parsedDate: parseResult.date,
 						});
 					}
@@ -563,10 +572,7 @@ export const generateSmartSuggestions = (
 								value: timeVariant,
 								confidence: (prefix ? 0.85 : 0.8) * 0.9,
 								category: "time" as const,
-								preview: formatDateForDisplay(
-									timeParseResult.date,
-									"MMM dd 'at' h:mma",
-								),
+								preview: formatDateForDisplay(timeParseResult.date, timeFormat),
 								parsedDate: timeParseResult.date,
 							});
 						}
@@ -640,7 +646,7 @@ export const generateSmartSuggestions = (
 								parseResult.date,
 								showTime &&
 									(suggestion.includes("am") || suggestion.includes("pm"))
-									? "MMM dd 'at' h:mma"
+									? timeFormat
 									: "MMM dd, yyyy",
 							),
 							parsedDate: parseResult.date,
