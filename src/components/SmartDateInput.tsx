@@ -1,12 +1,13 @@
 import { Calendar, Check, Clock, Sparkles } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import {
+	type HourFormat,
+	type SmartSuggestion,
 	formatConfidence,
 	formatDateForInput,
 	generateSmartSuggestions,
 	getConfidenceColor,
 	parseSmartDateString,
-	type SmartSuggestion,
 } from "../lib/activity-date-utils";
 
 // Base UI Components - you'll need to replace these with your own or install dependencies
@@ -81,7 +82,7 @@ const Popover = ({
 				if (index === 0) {
 					return React.cloneElement(
 						child as React.ReactElement<{ onClick?: () => void }>,
-						{ onClick: () => onOpenChange(!open) }
+						{ onClick: () => onOpenChange(!open) },
 					);
 				}
 				if (index === 1 && open) {
@@ -116,6 +117,7 @@ interface SmartDateInputProps {
 	value?: number | null;
 	onChange: (value: number | null) => void;
 	showTime?: boolean;
+	hourFormat?: HourFormat;
 	placeholder?: string;
 	className?: string;
 	disabled?: boolean;
@@ -126,6 +128,7 @@ export function SmartDateInput({
 	value,
 	onChange,
 	showTime = false,
+	hourFormat = "24",
 	placeholder,
 	className = "",
 	disabled = false,
@@ -154,18 +157,22 @@ export function SmartDateInput({
 
 	useEffect(() => {
 		if (value) {
-			setInputValue(formatDateForInput(new Date(value), showTime));
+			setInputValue(formatDateForInput(new Date(value), showTime, hourFormat));
 		} else {
 			setInputValue("");
 		}
-	}, [value, showTime]);
+	}, [value, showTime, hourFormat]);
 
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const newValue = e.target.value;
 		setInputValue(newValue);
 
 		// Generate smart suggestions based on input
-		const newSuggestions = generateSmartSuggestions(newValue, showTime);
+		const newSuggestions = generateSmartSuggestions(
+			newValue,
+			showTime,
+			hourFormat,
+		);
 		setSuggestions(newSuggestions);
 		setShowSuggestions(newSuggestions.length > 0);
 		setSelectedSuggestionIndex(-1);
@@ -220,7 +227,9 @@ export function SmartDateInput({
 				// User pressed Enter with a valid parse (no suggestions shown)
 				e.preventDefault();
 				onChange(currentParseResult.date.getTime());
-				setInputValue(formatDateForInput(currentParseResult.date, showTime));
+				setInputValue(
+					formatDateForInput(currentParseResult.date, showTime, hourFormat),
+				);
 			}
 		} else if (e.key === "Tab" && showSuggestions && suggestions.length > 0) {
 			// Tab to accept the first/selected suggestion
@@ -238,7 +247,11 @@ export function SmartDateInput({
 	};
 
 	const handleFocus = () => {
-		const newSuggestions = generateSmartSuggestions(inputValue, showTime);
+		const newSuggestions = generateSmartSuggestions(
+			inputValue,
+			showTime,
+			hourFormat,
+		);
 		setSuggestions(newSuggestions);
 		setShowSuggestions(newSuggestions.length > 0);
 	};
@@ -269,6 +282,21 @@ export function SmartDateInput({
 		const date = value ? new Date(value) : new Date();
 		date.setHours(hours || 0);
 		date.setMinutes(minutes || 0);
+		onChange(date.getTime());
+	};
+
+	const handle12hTimeChange = (
+		hour12: number,
+		minute: number,
+		period: "AM" | "PM",
+	) => {
+		let hours24 = hour12 % 12;
+		if (period === "PM") {
+			hours24 += 12;
+		}
+		const date = value ? new Date(value) : new Date();
+		date.setHours(hours24);
+		date.setMinutes(minute);
 		onChange(date.getTime());
 	};
 
@@ -392,7 +420,7 @@ export function SmartDateInput({
 							onSelect={handleDateSelect}
 							disabled={disabled}
 						/>
-						{showTime && (
+						{showTime && hourFormat === "24" && (
 							<div className="border-t p-3">
 								<div className="flex items-center gap-2">
 									<Clock className="h-4 w-4" />
@@ -406,6 +434,89 @@ export function SmartDateInput({
 										onChange={(e) => handleTimeChange(e.target.value)}
 										className="w-auto"
 									/>
+								</div>
+							</div>
+						)}
+						{showTime && hourFormat === "12" && (
+							<div className="border-t p-3">
+								<div className="flex items-center gap-2">
+									<Clock className="h-4 w-4" />
+									{(() => {
+										const hours24 = selectedDate ? selectedDate.getHours() : 0;
+										const minutes = selectedDate
+											? selectedDate.getMinutes()
+											: 0;
+										const period: "AM" | "PM" = hours24 >= 12 ? "PM" : "AM";
+										const hour12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+										// Round minutes to nearest 5-min step for select value
+										const rounded = Math.round(minutes / 5) * 5;
+										const minuteStep = rounded === 60 ? 0 : rounded;
+										const selectClass =
+											"h-9 px-2 border border-input rounded-md bg-transparent text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+										return (
+											<>
+												<select
+													className={selectClass}
+													value={hour12}
+													onChange={(e) =>
+														handle12hTimeChange(
+															Number.parseInt(e.target.value, 10),
+															minuteStep,
+															period,
+														)
+													}
+													disabled={disabled}
+													aria-label="Hour"
+												>
+													{Array.from({ length: 12 }, (_, i) => i + 1).map(
+														(h) => (
+															<option key={h} value={h}>
+																{h}
+															</option>
+														),
+													)}
+												</select>
+												<span className="text-sm">:</span>
+												<select
+													className={selectClass}
+													value={minuteStep}
+													onChange={(e) =>
+														handle12hTimeChange(
+															hour12,
+															Number.parseInt(e.target.value, 10),
+															period,
+														)
+													}
+													disabled={disabled}
+													aria-label="Minute"
+												>
+													{Array.from({ length: 12 }, (_, i) => i * 5).map(
+														(m) => (
+															<option key={m} value={m}>
+																{m.toString().padStart(2, "0")}
+															</option>
+														),
+													)}
+												</select>
+												<select
+													className={selectClass}
+													value={period}
+													onChange={(e) =>
+														handle12hTimeChange(
+															hour12,
+															minuteStep,
+															e.target.value as "AM" | "PM",
+														)
+													}
+													disabled={disabled}
+													aria-label="AM or PM"
+												>
+													<option value="AM">AM</option>
+													<option value="PM">PM</option>
+												</select>
+											</>
+										);
+									})()}
 								</div>
 							</div>
 						)}

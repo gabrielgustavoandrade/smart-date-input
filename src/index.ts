@@ -2,6 +2,7 @@ export { SmartDateInput } from "./components/SmartDateInput";
 export type {
 	SmartSuggestion,
 	DateParseResult,
+	HourFormat,
 } from "./lib/activity-date-utils";
 export {
 	parseSmartDateString,
