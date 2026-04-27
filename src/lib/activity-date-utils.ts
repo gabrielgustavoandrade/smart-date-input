@@ -78,9 +78,14 @@ export const parseSmartDateString = (input: string): DateParseResult | null => {
 	}
 
 	// Remove time from input for date parsing
-	const inputWithoutTime = timeMatch
+	const rawWithoutTime = timeMatch
 		? trimmed.replace(timeMatch[0], "").trim()
 		: trimmed;
+	// Strip dangling prepositions left over after time removal ("tomorrow at 3pm" -> "tomorrow")
+	const inputWithoutTime = rawWithoutTime
+		.replace(/\s+(at|@|on|by)\s*$/i, "")
+		.replace(/^(at|@|on|by)\s+/i, "")
+		.trim();
 
 	// Relative date patterns (high confidence)
 	const relativePatterns = [
@@ -446,8 +451,12 @@ export const generateSmartSuggestions = (
 	// Generate contextual suggestions based on partial input
 	const contextualSuggestions: SmartSuggestion[] = [];
 
+	// If we already have a high-confidence parse, the current input is unambiguous.
+	// Skip generic time-bucket / weekday / month fillers — they distract from the exact match.
+	const hasStrongParse = !!currentParse && currentParse.confidence >= 0.7;
+
 	// Time-based suggestions
-	if (showTime) {
+	if (showTime && !hasStrongParse) {
 		const timeKeywords = [
 			"am",
 			"pm",
@@ -458,14 +467,22 @@ export const generateSmartSuggestions = (
 			"night",
 		];
 		if (timeKeywords.some((keyword) => trimmed.includes(keyword))) {
-			// Generate proper suggestions with all required fields
-			const timeSuggestionBases = [
-				{ base: "today", times: ["9am", "12pm", "2pm", "5pm"] },
-				{ base: "tomorrow", times: ["9am", "10am", "2pm", "3pm"] },
-			];
+			// Pick bases that match what the user typed; fall back to today+tomorrow only when nothing matches.
+			const allBases = [
+				{ base: "today", patterns: [/\btoday\b/, /\bnow\b/] },
+				{ base: "tomorrow", patterns: [/\btomorrow\b/, /\btom\b/] },
+			] as const;
+			const matchedBases = allBases
+				.filter(({ patterns }) => patterns.some((p) => p.test(trimmed)))
+				.map(({ base }) => base);
+			const bases = matchedBases.length > 0 ? matchedBases : ["today", "tomorrow"];
+			const timesByBase: Record<string, string[]> = {
+				today: ["9am", "12pm", "2pm", "5pm"],
+				tomorrow: ["9am", "10am", "2pm", "3pm"],
+			};
 
-			for (const { base, times } of timeSuggestionBases) {
-				for (const time of times) {
+			for (const base of bases) {
+				for (const time of timesByBase[base] ?? []) {
 					const suggestion = `${base} ${time}`;
 					const parseResult = parseSmartDateString(suggestion);
 					if (parseResult) {
@@ -498,9 +515,11 @@ export const generateSmartSuggestions = (
 		"nov",
 		"dec",
 	];
-	const matchedMonths = months.filter(
-		(month) => month.includes(trimmed) || trimmed.includes(month),
-	);
+	const matchedMonths = hasStrongParse
+		? []
+		: months.filter(
+				(month) => month.includes(trimmed) || trimmed.includes(month),
+			);
 
 	// Only add generic month suggestions if we don't have a good direct parse
 	if (!currentParse || currentParse.confidence < 0.7) {
@@ -541,9 +560,11 @@ export const generateSmartSuggestions = (
 		"saturday",
 		"sunday",
 	];
-	const matchedWeekdays = weekdays.filter(
-		(day) => day.includes(trimmed) || trimmed.includes(day.substring(0, 3)),
-	);
+	const matchedWeekdays = hasStrongParse
+		? []
+		: weekdays.filter(
+				(day) => day.includes(trimmed) || trimmed.includes(day.substring(0, 3)),
+			);
 
 	for (const weekday of matchedWeekdays) {
 		for (const prefix of ["", "next "]) {
