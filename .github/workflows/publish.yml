@@ -27,6 +27,13 @@ jobs:
       - name: Update npm for trusted publishing
         run: npm install -g npm@latest
 
+      - name: Debug versions
+        run: |
+          node --version
+          npm --version
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+
       - name: Install
         run: bun install --frozen-lockfile
 
