@@ -60,6 +60,9 @@ const CalendarComponent = ({
 			onChange={(e) =>
 				onSelect(e.target.value ? new Date(e.target.value) : undefined)
 			}
+			onKeyDown={(e) => {
+				if (e.key === "Enter") e.preventDefault();
+			}}
 			disabled={disabled}
 			className="w-full p-2 border rounded"
 		/>
@@ -75,24 +78,49 @@ const Popover = ({
 	children: React.ReactNode;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-}) => (
-	<div className="relative">
-		{React.Children.map(children, (child, index) => {
-			if (React.isValidElement(child)) {
-				if (index === 0) {
-					return React.cloneElement(
-						child as React.ReactElement<{ onClick?: () => void }>,
-						{ onClick: () => onOpenChange(!open) },
-					);
-				}
-				if (index === 1 && open) {
-					return child;
-				}
+}) => {
+	const wrapperRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!open) return;
+		const handleMouseDown = (event: MouseEvent) => {
+			if (
+				wrapperRef.current &&
+				!wrapperRef.current.contains(event.target as Node)
+			) {
+				onOpenChange(false);
 			}
-			return child;
-		})}
-	</div>
-);
+		};
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") onOpenChange(false);
+		};
+		document.addEventListener("mousedown", handleMouseDown);
+		document.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.removeEventListener("mousedown", handleMouseDown);
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [open, onOpenChange]);
+
+	return (
+		<div ref={wrapperRef} className="relative">
+			{React.Children.map(children, (child, index) => {
+				if (React.isValidElement(child)) {
+					if (index === 0) {
+						return React.cloneElement(
+							child as React.ReactElement<{ onClick?: () => void }>,
+							{ onClick: () => onOpenChange(!open) },
+						);
+					}
+					if (index === 1 && open) {
+						return child;
+					}
+				}
+				return child;
+			})}
+		</div>
+	);
+};
 
 const PopoverTrigger = ({
 	children,
@@ -116,6 +144,9 @@ const PopoverContent = ({
 	return (
 		<div
 			className={`absolute z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg ${alignClass} ${className || ""}`}
+			onKeyDown={(e) => {
+				if (e.key === "Enter") e.preventDefault();
+			}}
 		>
 			{children}
 		</div>
