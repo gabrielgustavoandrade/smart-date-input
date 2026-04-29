@@ -105,16 +105,15 @@ const Popover = ({
 	return (
 		<div ref={wrapperRef} className="relative">
 			{React.Children.map(children, (child, index) => {
-				if (React.isValidElement(child)) {
-					if (index === 0) {
-						return React.cloneElement(
-							child as React.ReactElement<{ onClick?: () => void }>,
-							{ onClick: () => onOpenChange(!open) },
-						);
-					}
-					if (index === 1 && open) {
-						return child;
-					}
+				if (!React.isValidElement(child)) return child;
+				if (index === 0) {
+					return React.cloneElement(
+						child as React.ReactElement<{ onClick?: () => void }>,
+						{ onClick: () => onOpenChange(!open) },
+					);
+				}
+				if (index === 1) {
+					return open ? child : null;
 				}
 				return child;
 			})}
