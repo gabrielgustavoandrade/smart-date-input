@@ -101,17 +101,26 @@ const PopoverTrigger = ({
 const PopoverContent = ({
 	children,
 	className,
+	align = "start",
 }: {
 	children: React.ReactNode;
 	className?: string;
-	align?: string;
-}) => (
-	<div
-		className={`absolute z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg ${className || ""}`}
-	>
-		{children}
-	</div>
-);
+	align?: "start" | "end" | "center";
+}) => {
+	const alignClass =
+		align === "end"
+			? "right-0 left-auto"
+			: align === "center"
+				? "left-1/2 -translate-x-1/2"
+				: "left-0";
+	return (
+		<div
+			className={`absolute z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg ${alignClass} ${className || ""}`}
+		>
+			{children}
+		</div>
+	);
+};
 
 interface SmartDateInputProps {
 	value?: number | null;
@@ -413,7 +422,7 @@ export function SmartDateInput({
 							<Calendar className="h-4 w-4" />
 						</Button>
 					</PopoverTrigger>
-					<PopoverContent className="w-auto p-0" align="start">
+					<PopoverContent className="w-auto p-0" align="end">
 						<CalendarComponent
 							mode="single"
 							selected={selectedDate}
