@@ -123,7 +123,21 @@ const Popover = ({
 
 const PopoverTrigger = ({
 	children,
-}: { children: React.ReactNode; asChild?: boolean }) => <div>{children}</div>;
+	asChild,
+	onClick,
+}: {
+	children: React.ReactNode;
+	asChild?: boolean;
+	onClick?: () => void;
+}) => {
+	if (asChild && React.isValidElement(children)) {
+		return React.cloneElement(
+			children as React.ReactElement<{ onClick?: () => void }>,
+			{ onClick },
+		);
+	}
+	return <div onClick={onClick}>{children}</div>;
+};
 
 const PopoverContent = ({
 	children,
