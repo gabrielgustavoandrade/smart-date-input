@@ -1,8 +1,28 @@
-import { Calendar, Check, Clock, Sparkles } from "lucide-react";
+import {
+	addMonths,
+	eachDayOfInterval,
+	endOfMonth,
+	endOfWeek,
+	format,
+	isSameDay,
+	isSameMonth,
+	isToday,
+	startOfMonth,
+	startOfWeek,
+} from "date-fns";
+import {
+	Calendar,
+	Check,
+	ChevronLeft,
+	ChevronRight,
+	Clock,
+	Sparkles,
+} from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import {
 	type HourFormat,
 	type SmartSuggestion,
+	applyDateKeepingTime,
 	formatConfidence,
 	formatDateForInput,
 	generateSmartSuggestions,
@@ -42,7 +62,16 @@ const Input = React.forwardRef<
 	/>
 ));
 
-// Simple Calendar component - you'll want to replace this with a proper one like react-day-picker
+const WEEKDAYS: ReadonlyArray<{ key: string; label: string }> = [
+	{ key: "sun", label: "S" },
+	{ key: "mon", label: "M" },
+	{ key: "tue", label: "T" },
+	{ key: "wed", label: "W" },
+	{ key: "thu", label: "T" },
+	{ key: "fri", label: "F" },
+	{ key: "sat", label: "S" },
+];
+
 const CalendarComponent = ({
 	selected,
 	onSelect,
@@ -52,22 +81,81 @@ const CalendarComponent = ({
 	selected?: Date;
 	onSelect: (date: Date | undefined) => void;
 	disabled?: boolean;
-}) => (
-	<div className="p-3">
-		<input
-			type="date"
-			value={selected ? selected.toISOString().split("T")[0] : ""}
-			onChange={(e) =>
-				onSelect(e.target.value ? new Date(e.target.value) : undefined)
-			}
-			onKeyDown={(e) => {
-				if (e.key === "Enter") e.preventDefault();
-			}}
-			disabled={disabled}
-			className="w-full p-2 border rounded"
-		/>
-	</div>
-);
+}): React.ReactElement => {
+	const [visibleMonth, setVisibleMonth] = useState<Date>(
+		selected ?? new Date(),
+	);
+
+	useEffect(() => {
+		if (selected) {
+			setVisibleMonth(selected);
+		}
+	}, [selected]);
+
+	const monthStart = startOfMonth(visibleMonth);
+	const days = eachDayOfInterval({
+		start: startOfWeek(monthStart),
+		end: endOfWeek(endOfMonth(monthStart)),
+	});
+
+	return (
+		<div className="p-3">
+			<div className="mb-2 flex items-center justify-between">
+				<button
+					type="button"
+					aria-label="Previous month"
+					disabled={disabled}
+					className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm hover:bg-gray-50 disabled:opacity-50"
+					onClick={() => setVisibleMonth(addMonths(visibleMonth, -1))}
+				>
+					<ChevronLeft className="h-4 w-4" />
+				</button>
+				<span className="text-sm font-medium">
+					{format(visibleMonth, "MMMM yyyy")}
+				</span>
+				<button
+					type="button"
+					aria-label="Next month"
+					disabled={disabled}
+					className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm hover:bg-gray-50 disabled:opacity-50"
+					onClick={() => setVisibleMonth(addMonths(visibleMonth, 1))}
+				>
+					<ChevronRight className="h-4 w-4" />
+				</button>
+			</div>
+			<div className="grid grid-cols-7 gap-1 text-center">
+				{WEEKDAYS.map((weekday) => (
+					<div key={weekday.key} className="text-xs text-gray-500 py-1">
+						{weekday.label}
+					</div>
+				))}
+				{days.map((day) => {
+					const isSelected = selected ? isSameDay(day, selected) : false;
+					const inMonth = isSameMonth(day, visibleMonth);
+					return (
+						<button
+							key={day.toISOString()}
+							type="button"
+							disabled={disabled}
+							aria-label={format(day, "EEEE, MMMM do, yyyy")}
+							aria-pressed={isSelected}
+							onClick={() => onSelect(day)}
+							className={`h-8 w-8 rounded-md text-sm ${
+								isSelected
+									? "bg-blue-50 font-medium"
+									: isToday(day)
+										? "border border-gray-200"
+										: ""
+							} ${inMonth ? "" : "text-gray-500"} hover:bg-gray-50 disabled:opacity-50`}
+						>
+							{format(day, "d")}
+						</button>
+					);
+				})}
+			</div>
+		</div>
+	);
+};
 
 // Simple Popover components - replace with your preferred popover library
 const Popover = ({
@@ -318,14 +406,18 @@ export function SmartDateInput({
 	};
 
 	const handleDateSelect = (date: Date | undefined) => {
-		if (date) {
-			// If we have a time component from the current parse, preserve it
-			if (showTime && currentParseResult?.parsedComponents.time) {
-				const existingTime = currentParseResult.date;
-				date.setHours(existingTime.getHours());
-				date.setMinutes(existingTime.getMinutes());
-			}
-			onChange(date.getTime());
+		if (!date) return;
+
+		const timeSource = currentParseResult?.parsedComponents.time
+			? currentParseResult.date
+			: value
+				? new Date(value)
+				: undefined;
+		const next = showTime ? applyDateKeepingTime(date, timeSource) : date;
+		onChange(next.getTime());
+		// Keep the popover open when time is enabled so the user can set it
+		// after picking a day. The native date input used to close immediately.
+		if (!showTime) {
 			setIsOpen(false);
 		}
 	};
@@ -573,6 +665,17 @@ export function SmartDateInput({
 								</div>
 							</div>
 						)}
+						{showTime ? (
+							<div className="border-t px-3 py-2 flex justify-end">
+								<Button
+									type="button"
+									size="sm"
+									onClick={() => setIsOpen(false)}
+								>
+									Done
+								</Button>
+							</div>
+						) : null}
 					</PopoverContent>
 				</Popover>
 			</div>
