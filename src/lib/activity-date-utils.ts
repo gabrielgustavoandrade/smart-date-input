@@ -341,6 +341,22 @@ export const parseDateString = (dateString: string): Date | null => {
 
 export type HourFormat = "12" | "24";
 
+/**
+ * Keep the calendar day from `date` and copy hours/minutes from `timeSource`.
+ * Always construct in local time — `new Date("yyyy-MM-dd")` is UTC midnight
+ * and shifts the clock (e.g. 2:00 AM in UTC+2).
+ */
+export const applyDateKeepingTime = (
+	date: Date,
+	timeSource: Date | undefined,
+): Date => {
+	const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+	if (timeSource && isValid(timeSource)) {
+		next.setHours(timeSource.getHours(), timeSource.getMinutes(), 0, 0);
+	}
+	return next;
+};
+
 export const formatDateForInput = (
 	date: Date,
 	includeTime = false,
@@ -475,7 +491,8 @@ export const generateSmartSuggestions = (
 			const matchedBases = allBases
 				.filter(({ patterns }) => patterns.some((p) => p.test(trimmed)))
 				.map(({ base }) => base);
-			const bases = matchedBases.length > 0 ? matchedBases : ["today", "tomorrow"];
+			const bases =
+				matchedBases.length > 0 ? matchedBases : ["today", "tomorrow"];
 			const timesByBase: Record<string, string[]> = {
 				today: ["9am", "12pm", "2pm", "5pm"],
 				tomorrow: ["9am", "10am", "2pm", "3pm"],

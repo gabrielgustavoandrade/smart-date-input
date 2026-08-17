@@ -7,6 +7,7 @@ export type {
 export {
 	parseSmartDateString,
 	parseDateString,
+	applyDateKeepingTime,
 	formatDateForInput,
 	formatDateForDisplay,
 	formatRelativeTime,
