@@ -7,33 +7,24 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
   id-token: write
+  contents: read
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
-
-      - name: Update npm for trusted publishing
-        run: npm install -g npm@latest
-
-      - name: Debug versions
-        run: |
-          node --version
-          npm --version
-          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
-          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+          package-manager-cache: false
 
       - name: Install
         run: bun install --frozen-lockfile
@@ -55,4 +46,4 @@ jobs:
           fi
 
       - name: Publish
-        run: npm publish --access public --provenance
+        run: npm publish --access public
