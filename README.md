@@ -16,11 +16,11 @@ An intelligent React date/time input component with natural language parsing, sm
 ## Installation
 
 ```bash
-bun add @gabrielandrade/smart-date-input
+bun add @gabrielgustavoandrade/smart-date-input
 # or
-npm install @gabrielandrade/smart-date-input
+npm install @gabrielgustavoandrade/smart-date-input
 # or
-yarn add @gabrielandrade/smart-date-input
+yarn add @gabrielgustavoandrade/smart-date-input
 ```
 
 ### Peer Dependencies
@@ -35,7 +35,7 @@ npm install react react-dom date-fns lucide-react
 
 ```tsx
 import React, { useState } from 'react';
-import { SmartDateInput } from '@gabrielandrade/smart-date-input';
+import { SmartDateInput } from '@gabrielgustavoandrade/smart-date-input';
 
 function App() {
   const [date, setDate] = useState<number | null>(null);
@@ -96,7 +96,7 @@ import {
   formatDateForDisplay,
   generateSmartSuggestions,
   getDueDateStatus
-} from '@gabrielandrade/smart-date-input';
+} from '@gabrielgustavoandrade/smart-date-input';
 
 // Parse natural language
 const result = parseSmartDateString("tomorrow 7am");

@@ -159,13 +159,15 @@ export const parseSmartDateString = (input: string): DateParseResult | null => {
 			"sunday",
 		];
 		const weekdayPattern = new RegExp(
-			`^(next\\s+)?(${weekdays.join("|")})$`,
+			`^(?:(next|this)\\s+)?(${weekdays.join("|")})$`,
 			"i",
 		);
 		const weekdayMatch = inputWithoutTime.match(weekdayPattern);
 
 		if (weekdayMatch) {
-			const isNext = !!weekdayMatch[1];
+			const modifier = weekdayMatch[1]?.toLowerCase();
+			const isNext = modifier === "next";
+			const isThis = modifier === "this";
 			const weekdayName = weekdayMatch[2].toLowerCase();
 			const targetDayIndex = weekdays.indexOf(weekdayName);
 
@@ -174,7 +176,9 @@ export const parseSmartDateString = (input: string): DateParseResult | null => {
 				const today = now.getDay() === 0 ? 7 : now.getDay();
 				let daysUntilTarget = targetDay - today;
 
-				if (isNext || daysUntilTarget <= 0) {
+				// "next <weekday>" / bare "<weekday>": nearest occurrence strictly after today
+				// (same weekday => +7). "this <weekday>": today if same weekday, else upcoming.
+				if (isThis ? daysUntilTarget < 0 : daysUntilTarget <= 0) {
 					daysUntilTarget += 7;
 				}
 
